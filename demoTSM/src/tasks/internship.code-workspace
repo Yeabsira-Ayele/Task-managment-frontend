@@ -1,0 +1,16 @@
+{
+	"folders": [
+		{
+			"name": "internship",
+			"path": "../../../../internship"
+		},
+		{
+			"name": "demoTSM",
+			"path": "../.."
+		},
+		{
+			"path": "../../../backendDemoTSM"
+		}
+	],
+	"settings": {}
+}
