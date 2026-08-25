@@ -1,6 +1,6 @@
 import { devtools, persist } from "zustand/middleware";
 import { create } from "zustand";
-
+import api from "../api/axios"
 export type TaskType = {
   id: number;
   taskTitle: string;
