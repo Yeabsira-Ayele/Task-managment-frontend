@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState , useEffect } from "react";
 import { useNavigate, useParams } from "react-router";
 import {
   ArrowLeft,
@@ -8,6 +8,7 @@ import {
   Paperclip,
   X,
 } from "lucide-react";
+import { useAuth } from "../Auth/authStore";
 
 import { AssigneeAvatar } from "./components/AssigneeAvatar";
 import { PriorityIndicator } from "./components/PriorityIndicator";
@@ -15,14 +16,27 @@ import { StatusBadge } from "./components/statusBadge";
 import { useTask } from "./store";
 
 function TaskDetail() {
+  
   const { id } = useParams();
   const navigate = useNavigate();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const tasks = useTask((state) => state.tasks);
+  const fetchTasks = useTask((state) => state.fetchTasks); // FIX: needed so a hard refresh on this route has data to search through
   const deleteTask = useTask((state) => state.setDeletetask);
 
-  const task = tasks.find((item) => item.id === Number(id));
+  // FIX: your MongoDB _id is a string like "64f1a2b3c9d4e5f6a7b8c9d0", not a number.
+  // `Number(id)` on that string produces NaN, so `task.id === Number(id)` was NEVER true —
+  // this is why the page always fell through to "Task not found".
+  const task = tasks.find((item) => item.id === id);
+
+  // FIX: if the user lands directly on /tasks/:id (refresh, shared link, etc.)
+  // the store might still be empty since nothing fetched it yet.
+  useEffect(() => {
+    if (tasks.length === 0) {
+      fetchTasks();
+    }
+  }, [tasks.length, fetchTasks]);
 
   const handleTaskEdit = () => {
     if (!task) return;
@@ -43,12 +57,16 @@ function TaskDetail() {
   const nameParts = assigneeName.split(" ");
   const firstName = nameParts[0] || "";
   const lastName = nameParts.slice(1).join(" ") || "";
+   
+  const user = useAuth((state) => state.user);
+const isAdmin = user?.role === "admin";
+const isOwner = task.assignee === user?.id;
 
   if (!task) {
     return (
       <div>
         <button
-          onClick={() => navigate("/task")}
+          onClick={() => navigate("/tasks")} // FIX: was "/task" (singular) — wrong route, your list page is "/tasks"
           className="flex items-center gap-2 text-sm text-[#8da2c2] hover:text-[#111827]"
         >
           <ArrowLeft size={18} />
@@ -97,8 +115,10 @@ function TaskDetail() {
               <PriorityIndicator priority={task.priority} />
             </div>
 
-            <div className="flex items-center gap-4">
-              <button
+            
+              {isAdmin && (
+                <div className="flex items-center gap-4">
+                 <button
                 onClick={handleTaskEdit}
                 className="text-[#91a5c3] transition hover:text-[#1557d6]"
                 title="Edit task"
@@ -113,7 +133,11 @@ function TaskDetail() {
               >
                 <Trash2 size={18} strokeWidth={1.8} />
               </button>
-            </div>
+             </div>
+                
+              )}
+             
+           
           </div>
 
           <h1 className="text-[21px] font-semibold tracking-[-0.3px] text-[#08152f]">
@@ -166,7 +190,8 @@ function TaskDetail() {
           <div className="mb-5 flex items-center justify-between gap-4">
             <span className="text-sm text-[#91a5c3]">Created</span>
             <span className="text-sm font-medium text-[#111827]">
-              {new Date(task.createdAt).toLocaleDateString()}
+              {task.createdAt ? new Date(task.createdAt).toLocaleDateString() : "Unknown"}
+              {/* FIX: guarded against empty createdAt — new Date("") renders "Invalid Date" */}
             </span>
           </div>
 
@@ -175,7 +200,10 @@ function TaskDetail() {
             <div className="flex items-center gap-2">
               <Paperclip size={18} strokeWidth={1.8} className="text-[#91a5c3]" />
               <span className="text-sm font-medium text-[#111827]">
-                {task.file ? task.file.name : "No files"}
+                {task.fileUrl ? "1 file attached" : "No files"}
+                {/* FIX: your TaskType has `fileUrl` (a string | null), not `file`/`file.name` — 
+                    `task.file` doesn't exist on the type and would just render "No files" silently,
+                    or crash if `task.file` were ever truthy without `.name` */}
               </span>
             </div>
           </div>
@@ -234,5 +262,3 @@ function TaskDetail() {
 }
 
 export default TaskDetail;
-
-

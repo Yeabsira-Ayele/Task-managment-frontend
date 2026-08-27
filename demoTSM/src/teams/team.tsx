@@ -71,21 +71,7 @@ function TeamMemberCard({ member }: { member: TeamMember }) {
         </div>
       </div>
 
-      {/* Footer Block */}
-      <div className="flex items-center justify-between pt-4 border-t border-slate-50">
-        <div className={`flex items-center gap-2 text-xs font-semibold ${
-          isOnline ? 'text-emerald-500' : 'text-slate-500'
-        }`}>
-          <span className={`h-1.5 w-1.5 rounded-full ${isOnline ? 'bg-emerald-500' : 'bg-slate-400'}`} />
-          {isOnline ? 'Online' : 'Offline'}
-        </div>
-        <a 
-          href="#tasks" 
-          className="text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors"
-        >
-          View tasks →
-        </a>
-      </div>
+      
     </div>
   );
 }

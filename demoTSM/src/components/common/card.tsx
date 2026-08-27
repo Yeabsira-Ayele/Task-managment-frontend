@@ -3,12 +3,12 @@ import React from 'react';
 interface CardProps {
   title: string;
   num: number;
-  percent: string;
+  // percent: string;
   icon: React.ReactNode;
   forBG: string ;
 }
 
-function Card({ title, num, percent, icon , forBG}: CardProps) {
+function Card({ title, num, icon , forBG}: CardProps) {
   return (
     <div className="w-full rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md">
       {/* Top Header Row */}
@@ -16,9 +16,9 @@ function Card({ title, num, percent, icon , forBG}: CardProps) {
         <div className={`flex h-8 w-8 items-center justify-center rounded-full ${forBG} `}>
           {icon}
         </div>
-        <span className="inline-flex items-center justify-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-700">
+        {/* <span className="inline-flex items-center justify-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-700">
           {percent}
-        </span>
+        </span> */}
       </div>
 
       {/* Content Section */}

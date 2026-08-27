@@ -1,7 +1,7 @@
-import { LuSearch } from "react-icons/lu";
+ import { LuSearch } from "react-icons/lu";
 import { LuGrid2X2 } from "react-icons/lu";
 import { LuList } from "react-icons/lu";
-import {   useMemo, type ChangeEvent } from "react";
+import { useEffect, useMemo, type ChangeEvent } from "react";
 import { useNavigate } from "react-router";
 import Heading from "../components/common/Heading";
 import { StatusBadge } from "./components/statusBadge";
@@ -10,45 +10,43 @@ import { AssigneeAvatar } from "./components/AssigneeAvatar";
 import { type TaskType } from "./store";
 import { useTask } from "./store";
 
-
-
-
 function Tasks() {
-  
   const navigate = useNavigate();
   const tasks = useTask((state) => state.tasks);
- 
+  const fetchTasks = useTask((state) => state.fetchTasks);
+  const loading = useTask((state) => state.loading);
+  const error = useTask((state) => state.error);
 
- // Filter values
-const searchTerm = useTask((state) => state.searchTerm);
-const statusFilter = useTask((state) => state.statusFilter);
-const priorityFilter = useTask((state) => state.priorityFilter);
+  // Filter values
+  const searchTerm = useTask((state) => state.searchTerm);
+  const statusFilter = useTask((state) => state.statusFilter);
+  const priorityFilter = useTask((state) => state.priorityFilter);
 
-// Filter setters
-const setSearchTerm = useTask((state) => state.setsearchTerm);
-const setStatusFilter = useTask((state) => state.setstatusFilter);
-const setPriorityFilter = useTask((state) => state.setpriorityFilter);
+  // Filter setters
+  const setSearchTerm = useTask((state) => state.setsearchTerm);
+  const setStatusFilter = useTask((state) => state.setstatusFilter);
+  const setPriorityFilter = useTask((state) => state.setpriorityFilter);
 
-  
-    
-
+  useEffect(() => {
+    fetchTasks();
+  }, [fetchTasks]);
 
   const totalTasks = tasks.length;
   const completedTasks = tasks.filter(t => t.status.toLowerCase() === "completed").length;
   const headingContent = `${totalTasks} tasks · ${completedTasks} completed`;
   const headerCss = "w-full text-gray-400 uppercase font-bold text-xs tracking-wider";
 
-const handleSearchChange = (e: ChangeEvent<HTMLInputElement>) => {
-  setSearchTerm(e.target.value);
-};
+  const handleSearchChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+  };
 
-const handleStatusChange = (e: ChangeEvent<HTMLSelectElement>) => {
-  setStatusFilter(e.target.value);
-};
+  const handleStatusChange = (e: ChangeEvent<HTMLSelectElement>) => {
+    setStatusFilter(e.target.value);
+  };
 
-const handlePriorityChange = (e: ChangeEvent<HTMLSelectElement>) => {
-  setPriorityFilter(e.target.value);
-};
+  const handlePriorityChange = (e: ChangeEvent<HTMLSelectElement>) => {
+    setPriorityFilter(e.target.value);
+  };
 
   // Normalizes "In Progress" -> "in-progress" so it matches the select option values
   const toSlug = (value: string) =>
@@ -89,41 +87,37 @@ const handlePriorityChange = (e: ChangeEvent<HTMLSelectElement>) => {
             className="outline-none text-sm bg-transparent"
           />
         </div>
-      
-      <div className="flex gap-3">
-        {/* Status */}
-        <select
-          name="status"
-          value={statusFilter}
-          onChange={handleStatusChange}
-          className="border border-gray-300 bg-slate-50 rounded-2xl py-2 px-5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="">All Status</option>
-          <option value="to-do">To Do</option>
-          <option value="in-progress">In Progress</option>
-          <option value="in-review">In Review</option>
-          <option value="completed">Completed</option>
-          <option value="cancelled">Cancelled</option>
-        </select>
 
-        {/* Priority */}
-        <select
-          name="priority"
-          value={priorityFilter}
-          onChange={handlePriorityChange}
-          className="border border-gray-300 bg-slate-50 rounded-2xl py-2 px-5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="">All Priority</option>
-          <option value="urgent">Urgent</option>
-          <option value="high">High</option>
-          <option value="medium">Medium</option>
-          <option value="low">Low</option>
-        </select>
+        <div className="flex gap-3">
+          {/* Status */}
+          <select
+            name="status"
+            value={statusFilter}
+            onChange={handleStatusChange}
+            className="border border-gray-300 bg-slate-50 rounded-2xl py-2 px-5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">All Status</option>
+            <option value="to-do">To Do</option>
+            <option value="in-progress">In Progress</option>
+            <option value="in-review">In Review</option>
+            <option value="completed">Completed</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+
+          {/* Priority */}
+          <select
+            name="priority"
+            value={priorityFilter}
+            onChange={handlePriorityChange}
+            className="border border-gray-300 bg-slate-50 rounded-2xl py-2 px-5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">All Priority</option>
+            <option value="urgent">Urgent</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
         </div>
-        {/* <div className="flex text-center">
-          <LuList />
-          <LuGrid2X2 />
-        </div> */}
       </div>
 
       {/* Horizontal mobile viewing scroll bar framework */}
@@ -137,64 +131,80 @@ const handlePriorityChange = (e: ChangeEvent<HTMLSelectElement>) => {
             <h3 className={`${headerCss} col-span-1`}>DUE DATE</h3>
           </div>
 
-          <ul className="divide-y divide-gray-50/70">
-            {filteredTasks.map((task) => {
-              const tagArray = task.tags ? task.tags.split(",").map(t => t.trim()) : [];
+          {loading && (
+            <div className="p-10 text-center text-gray-400 text-sm font-medium">
+              Loading tasks...
+            </div>
+          )}
 
-              const assigneeName = task.assignee ? task.assignee.trim() : "";
-              const nameParts = assigneeName.split(" ");
-              const firstName = nameParts[0] || "";
-              const lastName = nameParts[1] || "";
+          {!loading && error && (
+            <div className="p-10 text-center text-red-500 text-sm font-medium">
+              {error}
+            </div>
+          )}
 
-              return (
-                <li
-                  key={task.id}
-                  onClick={() => navigate(`/tasks/${task.id}`)}
-                  className="grid grid-cols-6 pl-6 pr-4 w-full py-5 items-center hover:bg-gray-50 cursor-pointer select-none transition-colors"
-                >
-                  <div className="col-span-2 flex flex-col gap-2 pr-4">
-                    <span className="text-slate-800 font-bold text-base tracking-tight">
-                      {task.taskTitle}
-                    </span>
-                    <div className="flex items-center gap-2 text-gray-400 text-xs">
-                      {tagArray.map((tag, idx) => (
-                        <span key={idx} className="bg-blue-50/60 text-blue-500/80 px-2 py-0.5 rounded text-[10px] font-bold tracking-wide">
-                          {tag}
-                        </span>
-                      ))}
+          {!loading && !error && (
+            <ul className="divide-y divide-gray-50/70">
+              {filteredTasks.map((task) => {
+                const tagArray = task.tags
+                  ? task.tags.split(",").map((t) => t.trim()).filter(Boolean)
+                  : [];
+
+                const assigneeName = task.assignee ? task.assignee.trim() : "";
+                const nameParts = assigneeName.split(" ");
+                const firstName = nameParts[0] || "";
+                const lastName = nameParts[1] || "";
+
+                return (
+                  <li
+                    key={task.id}
+                    onClick={() => navigate(`/tasks/${task.id}`)}
+                    className="grid grid-cols-6 pl-6 pr-4 w-full py-5 items-center hover:bg-gray-50 cursor-pointer select-none transition-colors"
+                  >
+                    <div className="col-span-2 flex flex-col gap-2 pr-4">
+                      <span className="text-slate-800 font-bold text-base tracking-tight">
+                        {task.taskTitle}
+                      </span>
+                      <div className="flex items-center gap-2 text-gray-400 text-xs">
+                        {tagArray.map((tag, idx) => (
+                          <span key={idx} className="bg-blue-50/60 text-blue-500/80 px-2 py-0.5 rounded text-[10px] font-bold tracking-wide">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="col-span-1">
-                    <StatusBadge status={task.status} />
-                  </div>
+                    <div className="col-span-1">
+                      <StatusBadge status={task.status} />
+                    </div>
 
-                  <div className="col-span-1">
-                    <PriorityIndicator priority={task.priority} />
-                  </div>
+                    <div className="col-span-1">
+                      <PriorityIndicator priority={task.priority} />
+                    </div>
 
-                  <div className="col-span-1">
-                    <AssigneeAvatar fname={firstName} lname={lastName} />
-                  </div>
+                    <div className="col-span-1">
+                      <AssigneeAvatar fname={firstName} lname={lastName} />
+                    </div>
 
-                  <div className="col-span-1 flex items-center gap-1.5 text-gray-400 text-[11px] font-semibold tracking-wider">
-                    <svg className="w-3.5 h-3.5 stroke-current" fill="none" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span>{task.dueDate}</span>
-                  </div>
+                    <div className="col-span-1 flex items-center gap-1.5 text-gray-400 text-[11px] font-semibold tracking-wider">
+                      <svg className="w-3.5 h-3.5 stroke-current" fill="none" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span>{task.dueDate}</span>
+                    </div>
+                  </li>
+                );
+              })}
+
+              {filteredTasks.length === 0 && (
+                <li className="p-10 text-center text-gray-400 text-sm font-medium">
+                  {tasks.length === 0
+                    ? "No tasks found "
+                    : "No tasks match your search or filters."}
                 </li>
-              );
-            })}
-
-            {filteredTasks.length === 0 && (
-              <li className="p-10 text-center text-gray-400 text-sm font-medium">
-                {tasks.length === 0
-                  ? "No tasks found "
-                  : "No tasks match your search or filters."}
-              </li>
-            )}
-          </ul>
+              )}
+            </ul>
+          )}
         </div>
       </div>
     </div>

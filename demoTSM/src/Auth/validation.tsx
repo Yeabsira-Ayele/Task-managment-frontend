@@ -61,6 +61,8 @@ export const loginSchema = z.object({
     )
     .min(8, {
       message: "Please enter a valid Password.",
+      
+      
     }),
 });
 

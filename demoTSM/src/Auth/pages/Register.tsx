@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -6,13 +7,14 @@ import { useNavigate } from "react-router";
 import InputField from "../../components/forms/InputField.tsx";
 import Btn from "../../components/common/Btn.tsx";
 import { FcGoogle } from "react-icons/fc";
-import Logo from "../../components/common/Logo.tsx";
-import ThemeToggle from "../../components/common/ThemeToggle.tsx";
+import { useAuth } from "../authStore"; // FIX: replaces the raw fetch() + manual axios import
 
 type RegisterFormData = z.infer<typeof registerSchema>;
 
 function Register() {
   const navigate = useNavigate();
+  const [apiError, setApiError] = useState<string | null>(null);
+  const register_ = useAuth((state) => state.register); // FIX: named register_ to avoid clashing with RHF's `register`
 
   const handleBacktoLogin = () => {
     navigate("/login");
@@ -28,23 +30,39 @@ function Register() {
   });
 
   const onSubmit = async (data: RegisterFormData) => {
-    
-    navigate("/dashboard", { replace: true });
+    setApiError(null);
+
+    try {
+   
+      await register_(data.fname, data.lname, data.email, data.password);
+
+      navigate("/dashboard", { replace: true });
+    } catch (error: any) {
+      
+      setApiError(
+        error?.response?.data?.message ?? "Something went wrong during registration."
+      );
+    }
   };
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50 p-6">
       <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-sm">
-        
 
         <div className="mb-6">
           <h1 className="text-3xl font-bold tracking-tight text-gray-900">
-            Create your account 
+            Create your account
           </h1>
           <p className="mt-2 text-sm text-gray-500">
             Join thousands of productive teams.
           </p>
         </div>
+
+        {apiError && (
+          <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600 border border-red-200">
+            {apiError}
+          </div>
+        )}
 
         <Btn variant="secondary" type="button">
           <FcGoogle className="text-lg" /> Continue with Google
@@ -57,7 +75,7 @@ function Register() {
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col items-center gap-5">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-4 w-full">
             <InputField
               id="fname"
               label="First Name"
@@ -113,7 +131,7 @@ function Register() {
           <button
             onClick={handleBacktoLogin}
             type="button"
-            className="font-semibold text-blue-600 hover:underline  cursor-pointer"
+            className="font-semibold text-blue-600 hover:underline cursor-pointer"
           >
             Sign in
           </button>

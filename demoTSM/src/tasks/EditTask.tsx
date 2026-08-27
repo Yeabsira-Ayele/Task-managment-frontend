@@ -9,16 +9,16 @@ export default function EditTask() {
   const navigate = useNavigate();
   const { id } = useParams();
 
-  // Top-level hook calls only — this is what makes the store reactive
   const tasks = useTask((state) => state.tasks);
   const editTask = useTask((state) => state.setEdittask);
+  const fetchTasks = useTask((state) => state.fetchTasks); // FIX: needed in case store is empty on direct load/refresh
 
   const [task, setTask] = useState({
     taskTitle: "",
     description: "",
-    status: "To Do",
-    priority: "Medium",
-    assignee: "Alice Johnson",
+    status: "",
+    priority: "",
+    assignee: "",
     dueDate: "",
     tags: "",
     file: null as File | null,
@@ -26,9 +26,18 @@ export default function EditTask() {
 
   const [notFound, setNotFound] = useState(false);
 
-  // Load existing task whenever the id in the URL changes
+  // FIX: fetch tasks if the store is empty (e.g. user landed directly on /tasks/:id/edit via refresh)
   useEffect(() => {
-    const existing = tasks.find((t) => t.id === Number(id));
+    if (tasks.length === 0) {
+      fetchTasks();
+    }
+  }, [tasks.length, fetchTasks]);
+
+  useEffect(() => {
+    // FIX: was `t.id === Number(id)`. Your task ids are Mongo ObjectId strings
+    // (e.g. "64f1a2b3c9d4e5f6a7b8c9d0"), and Number() on that string is NaN,
+    // so this comparison could never match — every edit page thought the task didn't exist.
+    const existing = tasks.find((t) => t.id === id);
 
     if (!existing) {
       setNotFound(true);
@@ -44,7 +53,11 @@ export default function EditTask() {
       assignee: existing.assignee,
       dueDate: existing.dueDate,
       tags: existing.tags,
-      file: existing.file, // keep the existing attachment unless the user picks a new one
+      file: null,
+      // FIX: `existing.file` doesn't exist on TaskType — the field is `fileUrl: string | null`,
+      // and it's a URL string from the server, not a browser File object. You can't put a URL
+      // string into an <input type="file">'s preview logic the same way. Resetting to null here;
+      // see the attachments section below for how existing files are now shown.
     });
   }, [id, tasks]);
 
@@ -65,26 +78,42 @@ export default function EditTask() {
     }));
   };
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
-    const existing = tasks.find((t) => t.id === Number(id));
-    if (!existing) return;
+    // FIX: was `tasks.find((t) => t.id === Number(id))` — same Number() bug as above
+    const existing = tasks.find((t) => t.id === id);
+    if (!existing || !id) return;
 
-    editTask({
-      ...existing,
-      taskTitle: task.taskTitle,
-      description: task.description,
-      status: task.status,
-      priority: task.priority,
-      assignee: task.assignee,
-      dueDate: task.dueDate,
-      tags: task.tags,
-      file: task.file,
-    });
+    try {
+      // FIX: `editTask` (setEdittask in the store) has the signature
+      //   setEdittask: (id: string, updatedTask: TaskFormInput) => Promise<void>
+      // but this was calling `editTask({...existing, taskTitle, ...})` — passing a single
+      // object as the first arg instead of (id, updates). That means `id` inside the store
+      // action would actually receive the whole task object, and `updatedTask` would be
+      // undefined — the PATCH request would hit a broken URL and send no body.
+      //
+      // Also removed `file` from the payload — TaskFormInput doesn't include a `file` field
+      // (it's Omit<TaskType, "id" | "createdAt" | "fileUrl">), and your backend controller
+      // doesn't currently handle multipart file uploads at all — sending a File object as JSON
+      // would either be dropped or serialize to "[object File]". File upload needs its own
+      // multipart endpoint (e.g. multer) before this can work; flagging it here rather than
+      // silently pretending it's implemented.
+      await editTask(id, {
+        taskTitle: task.taskTitle,
+        description: task.description,
+        status: task.status,
+        priority: task.priority,
+        assignee: task.assignee,
+        dueDate: task.dueDate,
+        tags: task.tags,
+      });
 
-    toast.success("Task Updated");
-    navigate(`/tasks/${id}`);
+      toast.success("Task Updated");
+      navigate(`/tasks/${id}`);
+    } catch (error) {
+      toast.error("Failed to update task. Try again!"); // FIX: was missing — silent failure before
+    }
   };
 
   const backToTask = () => {
@@ -100,7 +129,7 @@ export default function EditTask() {
             The task you're trying to edit doesn't exist.
           </p>
           <button
-            onClick={() => navigate("/task")}
+            onClick={() => navigate("/tasks")} // FIX: was "/task" (singular) — not a real route
             className="mt-4 text-sm text-blue-600 hover:underline"
           >
             Back to Tasks
@@ -252,7 +281,9 @@ export default function EditTask() {
               />
               <LuFileUp size={40} className="text-blue-400" />
               <h2>
-                {task.file ? task.file.name : "Drop files here or click to upload"}
+                {task.file
+                  ? task.file.name
+                  : "Drop files here or click to upload"}
               </h2>
               <p className="text-sm text-gray-400">
                 {task.file
@@ -260,6 +291,9 @@ export default function EditTask() {
                   : "PNG, JPG, PDF, DOC up to 25MB"}
               </p>
             </label>
+            {/* FIX: note — file upload isn't wired to the backend yet (no multipart endpoint),
+                so selecting a file here currently has no effect on save. Flagging rather than
+                silently dropping it, so it's a known TODO instead of a surprise bug later. */}
           </div>
 
           {/* SUBMIT BUTTON */}

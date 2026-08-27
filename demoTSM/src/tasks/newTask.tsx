@@ -37,23 +37,27 @@ export default function NewTask() {
     navigate("/tasks");
   };
 
-  const onSubmit = (data: TaskFormValues) => {
-    createTask({
-      id: Date.now(),
+const onSubmit = async (data: TaskFormValues) => {
+  try {
+    // Send only fields required by TaskFormInput type
+    await createTask({
       taskTitle: data.taskTitle,
       description: data.description,
       status: data.status,
       priority: data.priority,
       assignee: data.assignee,
       dueDate: data.dueDate,
-      tags: data.tags ?? "",
-      createdAt: new Date().toISOString(),
-      file: data.attachments,
+      tags: data.tags,
+    
     });
 
     toast.success("New Task Created!");
     navigate("/dashboard");
-  };
+  } catch (error) {
+    toast.error("Failed to save task. Try again!");
+  }
+};
+
 
   return (
     <div className="flex justify-center items-center p-3 bg-slate-50">
