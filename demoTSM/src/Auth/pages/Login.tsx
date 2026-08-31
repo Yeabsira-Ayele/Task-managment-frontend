@@ -76,9 +76,12 @@ function Login() {
           <Btn variant="primary" type="submit" disabled={isSubmitting}>
             {isSubmitting ? "Signing in..." : "Sign In"}
           </Btn>
+          
         </form>
-
-        <p className="mt-6 text-center text-sm text-gray-500">
+         <button onClick={() => navigate("/forgot-password")} type="button" className="text-sm text-blue-600 hover:underline">
+          Forgot password?
+         </button>
+        <p className="mt-4 text-center text-sm text-gray-500">
           Don't have an account?{" "}
           <button
             onClick={handleNavigateToRegister}

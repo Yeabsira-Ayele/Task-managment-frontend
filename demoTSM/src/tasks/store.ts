@@ -1,9 +1,23 @@
-    import { devtools, persist } from "zustand/middleware";
+import { devtools, persist } from "zustand/middleware";
 import { create } from "zustand";
 import api from "../api/axios";
 
+export type TaskAssignee = { id: string; fname: string; lname: string };
+
 export type TaskType = {
-  id: string; 
+  id: string;
+  taskTitle: string;
+  description: string;
+  status: string;
+  priority: string;
+  assignee: TaskAssignee | null;
+  dueDate: string;
+  tags: string;
+  createdAt: string;
+  attachments: string[];
+};
+
+export type TaskFormInput = {
   taskTitle: string;
   description: string;
   status: string;
@@ -11,11 +25,8 @@ export type TaskType = {
   assignee: string;
   dueDate: string;
   tags: string;
-  createdAt: string;
-  fileUrl: string | null;
+  attachments: string[];
 };
-
-export type TaskFormInput = Omit<TaskType, "id" | "createdAt" | "fileUrl">;
 
 interface TaskInterface {
   tasks: TaskType[];
@@ -37,19 +48,19 @@ interface TaskInterface {
   updateTaskStatus: (id: string, status: string) => Promise<void>;
 }
 
-// Normalizes tags back to a comma-separated string, since the backend
-// stores/returns tags as an array but the rest of the frontend expects a string.
 const normalizeTask = (raw: any): TaskType => ({
   id: raw.id ?? raw._id,
   taskTitle: raw.taskTitle ?? "",
   description: raw.description ?? "",
   status: raw.status ?? "",
   priority: raw.priority ?? "",
-  assignee: raw.assignee ?? "",
+  assignee: raw.assignee && typeof raw.assignee === "object"
+    ? { id: raw.assignee._id, fname: raw.assignee.fname ?? "", lname: raw.assignee.lname ?? "" }
+    : null,
   dueDate: raw.dueDate ?? "",
   tags: Array.isArray(raw.tags) ? raw.tags.join(", ") : raw.tags ?? "",
   createdAt: raw.createdAt ?? "",
-  fileUrl: raw.fileUrl ?? null,
+  attachments: Array.isArray(raw.attachments) ? raw.attachments : [],
 });
 
 export const useTask = create<TaskInterface>()(
@@ -82,15 +93,9 @@ export const useTask = create<TaskInterface>()(
           try {
             const res = await api.post("/task", newTask);
             const created = normalizeTask(res.data?.data);
-            set((state) => ({
-              tasks: [...state.tasks, created],
-              loading: false,
-            }));
+            set((state) => ({ tasks: [...state.tasks, created], loading: false }));
           } catch (err: any) {
-            set({
-              error: err?.response?.data?.error ?? "Failed to create task",
-              loading: false,
-            });
+            set({ error: err?.response?.data?.error ?? "Failed to create task", loading: false });
             throw err;
           }
         },
@@ -105,42 +110,29 @@ export const useTask = create<TaskInterface>()(
               loading: false,
             }));
           } catch (err: any) {
-            set({
-              error: err?.response?.data?.error ?? "Failed to update task",
-              loading: false,
-            });
+            set({ error: err?.response?.data?.error ?? "Failed to update task", loading: false });
           }
         },
 
         setDeletetask: async (id) => {
           const prevTasks = get().tasks;
-          set((state) => ({
-            tasks: state.tasks.filter((task) => task.id !== id),
-          }));
+          set((state) => ({ tasks: state.tasks.filter((task) => task.id !== id) }));
           try {
             await api.delete(`/task/${id}`);
           } catch (err: any) {
-            set({
-              tasks: prevTasks,
-              error: err?.response?.data?.error ?? "Failed to delete task",
-            });
+            set({ tasks: prevTasks, error: err?.response?.data?.error ?? "Failed to delete task" });
           }
         },
 
         updateTaskStatus: async (id, status) => {
           const prevTasks = get().tasks;
           set((state) => ({
-            tasks: state.tasks.map((task) =>
-              task.id === id ? { ...task, status } : task
-            ),
+            tasks: state.tasks.map((task) => (task.id === id ? { ...task, status } : task)),
           }));
           try {
             await api.patch(`/task/${id}`, { status });
           } catch (err: any) {
-            set({
-              tasks: prevTasks,
-              error: err?.response?.data?.error ?? "Failed to update status",
-            });
+            set({ tasks: prevTasks, error: err?.response?.data?.error ?? "Failed to update status" });
           }
         },
 

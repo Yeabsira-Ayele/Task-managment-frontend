@@ -1,4 +1,4 @@
- import { LuSearch } from "react-icons/lu";
+import { LuSearch } from "react-icons/lu";
 import { LuGrid2X2 } from "react-icons/lu";
 import { LuList } from "react-icons/lu";
 import { useEffect, useMemo, type ChangeEvent } from "react";
@@ -10,6 +10,15 @@ import { AssigneeAvatar } from "./components/AssigneeAvatar";
 import { type TaskType } from "./store";
 import { useTask } from "./store";
 
+// FIX: centralizes safe date formatting so a bad/missing dueDate doesn't render
+// "Invalid Date" or crash — used in the row below.
+const formatDueDate = (dueDate: string) => {
+  if (!dueDate) return "No date";
+  const parsed = new Date(dueDate);
+  if (isNaN(parsed.getTime())) return "No date";
+  return parsed.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+};
+
 function Tasks() {
   const navigate = useNavigate();
   const tasks = useTask((state) => state.tasks);
@@ -17,12 +26,10 @@ function Tasks() {
   const loading = useTask((state) => state.loading);
   const error = useTask((state) => state.error);
 
-  // Filter values
   const searchTerm = useTask((state) => state.searchTerm);
   const statusFilter = useTask((state) => state.statusFilter);
   const priorityFilter = useTask((state) => state.priorityFilter);
 
-  // Filter setters
   const setSearchTerm = useTask((state) => state.setsearchTerm);
   const setStatusFilter = useTask((state) => state.setstatusFilter);
   const setPriorityFilter = useTask((state) => state.setpriorityFilter);
@@ -48,7 +55,6 @@ function Tasks() {
     setPriorityFilter(e.target.value);
   };
 
-  // Normalizes "In Progress" -> "in-progress" so it matches the select option values
   const toSlug = (value: string) =>
     value.trim().toLowerCase().replace(/\s+/g, "-");
 
@@ -74,10 +80,8 @@ function Tasks() {
 
       {/* search */}
       <div className="flex justify-between shadow-sm gap-3 bg-white px-6 py-3 rounded-2xl">
-        {/* Search */}
         <div className="flex flex-1 items-center gap-2 border border-gray-300 rounded-2xl px-4 py-2 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500">
           <LuSearch className="text-gray-500" />
-
           <input
             type="text"
             name="search"
@@ -89,7 +93,6 @@ function Tasks() {
         </div>
 
         <div className="flex gap-3">
-          {/* Status */}
           <select
             name="status"
             value={statusFilter}
@@ -104,7 +107,6 @@ function Tasks() {
             <option value="cancelled">Cancelled</option>
           </select>
 
-          {/* Priority */}
           <select
             name="priority"
             value={priorityFilter}
@@ -120,7 +122,6 @@ function Tasks() {
         </div>
       </div>
 
-      {/* Horizontal mobile viewing scroll bar framework */}
       <div className="w-full overflow-x-auto rounded-xl border border-gray-100 shadow-sm bg-white">
         <div className="min-w-[900px] flex flex-col pt-4">
           <div className="grid grid-cols-6 pl-6 pr-4 w-full pb-4 border-b border-gray-100 items-center">
@@ -150,10 +151,12 @@ function Tasks() {
                   ? task.tags.split(",").map((t) => t.trim()).filter(Boolean)
                   : [];
 
-                const assigneeName = task.assignee ? task.assignee.trim() : "";
-                const nameParts = assigneeName.split(" ");
-                const firstName = nameParts[0] || "";
-                const lastName = nameParts[1] || "";
+                // FIX: task.assignee is now { id, fname, lname } | null (populated user object),
+                // not a plain "Firstname Lastname" string. The old code did
+                // `task.assignee.trim().split(" ")`, which would throw
+                // "task.assignee.trim is not a function" the moment real backend data loaded.
+                const firstName = task.assignee?.fname ?? "";
+                const lastName = task.assignee?.lname ?? "";
 
                 return (
                   <li
@@ -182,15 +185,28 @@ function Tasks() {
                       <PriorityIndicator priority={task.priority} />
                     </div>
 
-                    <div className="col-span-1">
-                      <AssigneeAvatar fname={firstName} lname={lastName} />
+                    <div className="col-span-1 flex items-center gap-2">
+                      {/* FIX: guard for a deleted/dangling assignee reference — shows a
+                          neutral placeholder instead of blank initials or a crash */}
+                      {task.assignee ? (
+                        <>
+                          <AssigneeAvatar fname={firstName} lname={lastName} />
+                          <span className="text-xs text-slate-500 truncate">
+                            {firstName} {lastName}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-xs text-gray-400 italic">Unassigned</span>
+                      )}
                     </div>
 
                     <div className="col-span-1 flex items-center gap-1.5 text-gray-400 text-[11px] font-semibold tracking-wider">
                       <svg className="w-3.5 h-3.5 stroke-current" fill="none" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
-                      <span>{task.dueDate}</span>
+                      {/* FIX: was raw ISO string (e.g. "2026-08-29T00:00:00.000Z"); now
+                          formatted as a readable calendar date via formatDueDate() */}
+                      <span>{formatDueDate(task.dueDate)}</span>
                     </div>
                   </li>
                 );

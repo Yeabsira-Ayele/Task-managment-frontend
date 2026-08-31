@@ -1,20 +1,24 @@
 import NewTask from "./tasks/newTask"
 import Tasks from "./tasks/Tasks"
 import Dashboard from "./dashboard/dashboard"
-import { Route, Routes, Outlet, Navigate } from "react-router" // FIX: added Navigate for redirects
+import { Route, Routes, Outlet, Navigate } from "react-router"
 import TaskDetail from "./tasks/taskDetail"
 import EditTask from "./tasks/EditTask"
 import Login from "./Auth/pages/Login"
-import Register from "./Auth/pages/Register"
 import Navbar from "./components/layouts/Navbar"
 import Sidebar from "./components/layouts/Sidebar"
 import Teams from "./teams/team"
 import { useState } from "react"
 import MyTasks from "./tasks/MyTasks"
-import { useAuth } from "./Auth/authStore" // FIX: needed to check login state
+import { useAuth } from "./Auth/authStore"
 import api from "./api/axios"
+import UserManagement from "./teams/userManagment"
+import NotFound from "./NotFound"
+import Profile from "./teams/profile"
+import ResetPassword from "./Auth/pages/resetPassword"
+import ForgotPassword from "./Auth/pages/forgotPassword"
+import CreateUser from "./teams/CreateUser"
 
-// after authStore is defined, once at app startup:
 const persistedToken = useAuth.getState().token;
 if (persistedToken) {
   api.defaults.headers.common["Authorization"] = `Bearer ${persistedToken}`;
@@ -23,10 +27,9 @@ if (persistedToken) {
 function AdminRoute({ children }: { children: React.ReactNode }) {
   const user = useAuth((state) => state.user);
   if (!user) return <Navigate to="/" replace />;
-  if (user.role !== "admin") return <Navigate to="/mytasks" replace />; // members bounced elsewhere
+  if (user.role !== "admin") return <Navigate to="/mytasks" replace />;
   return <>{children}</>;
 }
-
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const user = useAuth((state) => state.user);
@@ -61,12 +64,12 @@ function App() {
   return (
     <Routes>
       <Route path="/" element={<Login />} />
-      
       <Route path="/login" element={<Login />} />
-      <Route path="/signup" element={<Register />} />
+      <Route path="*" element={<NotFound />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password/:token" element={<ResetPassword />} />
 
       <Route element={<ProtectedRoute><LayoutWithShell /></ProtectedRoute>}>
-        
         <Route path="newTask" element={<NewTask />} />
         <Route path="dashboard" element={<AdminRoute><Dashboard /></AdminRoute>} />
         <Route path="tasks" element={<Tasks />} />
@@ -74,10 +77,10 @@ function App() {
         <Route path="mytasks" element={<MyTasks />} />
         <Route path="tasks/:id" element={<TaskDetail />} />
         <Route path="tasks/:id/edit" element={<EditTask />} />
+        <Route path="profile" element={<Profile />} />
+        <Route path="admin/users" element={<AdminRoute><UserManagement /></AdminRoute>} />
+        <Route path="admin/create-user" element={<AdminRoute><CreateUser /></AdminRoute>} />
       </Route>
-
-     
-      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
 }

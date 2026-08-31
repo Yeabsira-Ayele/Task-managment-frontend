@@ -1,21 +1,41 @@
 import Heading from "../components/common/Heading";
-import { LuFileUp, LuArrowLeft } from "react-icons/lu";
+import { LuArrowLeft, LuLink, LuX } from "react-icons/lu";
 import { useNavigate } from "react-router";
-import { useForm, Controller } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect, useState } from "react";
 import { useTask } from "./store";
 import toast from "react-hot-toast";
-import { taskSchema , type TaskFormValues } from "./taskValidation";
+import api from "../api/axios";
+import { taskSchema, type TaskFormValues } from "./taskValidation";
+
+type ApiUser = {
+  _id: string;
+  fname: string;
+  lname: string;
+  email: string;
+};
 
 export default function NewTask() {
   const createTask = useTask((state) => state.setCreatetask);
   const navigate = useNavigate();
 
+  const [users, setUsers] = useState<ApiUser[]>([]);
+  const [usersLoading, setUsersLoading] = useState(true);
+  const [usersError, setUsersError] = useState<string | null>(null);
+
+  useEffect(() => {
+    api.get("/users")
+      .then((res) => setUsers(res.data.data))
+      .catch(() => setUsersError("Failed to load team members"))
+      .finally(() => setUsersLoading(false));
+  }, []);
+
   const {
     register,
     handleSubmit,
-    control,
     watch,
+    setValue,
     formState: { errors },
   } = useForm<TaskFormValues>({
     resolver: zodResolver(taskSchema),
@@ -27,37 +47,51 @@ export default function NewTask() {
       assignee: "",
       dueDate: "",
       tags: "",
-      attachments: null,
+      attachments: [],
     },
   });
 
+  const [linkInput, setLinkInput] = useState("");
   const attachments = watch("attachments");
+
+  const addLink = () => {
+    const trimmed = linkInput.trim();
+    if (!trimmed) return;
+    setValue("attachments", [...attachments, trimmed], { shouldValidate: true });
+    setLinkInput("");
+  };
+
+  const removeLink = (index: number) => {
+    setValue(
+      "attachments",
+      attachments.filter((_, i) => i !== index),
+      { shouldValidate: true }
+    );
+  };
 
   const backToDashboard = () => {
     navigate("/tasks");
   };
 
-const onSubmit = async (data: TaskFormValues) => {
-  try {
-    // Send only fields required by TaskFormInput type
-    await createTask({
-      taskTitle: data.taskTitle,
-      description: data.description,
-      status: data.status,
-      priority: data.priority,
-      assignee: data.assignee,
-      dueDate: data.dueDate,
-      tags: data.tags,
-    
-    });
+  const onSubmit = async (data: TaskFormValues) => {
+    try {
+      await createTask({
+        taskTitle: data.taskTitle,
+        description: data.description,
+        status: data.status,
+        priority: data.priority,
+        assignee: data.assignee,
+        dueDate: data.dueDate,
+        tags: data.tags,
+        attachments: data.attachments,
+      });
 
-    toast.success("New Task Created!");
-    navigate("/dashboard");
-  } catch (error) {
-    toast.error("Failed to save task. Try again!");
-  }
-};
-
+      toast.success("New Task Created!");
+      navigate("/dashboard");
+    } catch (error) {
+      toast.error("Failed to save task. Try again!");
+    }
+  };
 
   return (
     <div className="flex justify-center items-center p-3 bg-slate-50">
@@ -152,14 +186,22 @@ const onSubmit = async (data: TaskFormValues) => {
                 <label>Assignee</label>
                 <select
                   {...register("assignee")}
+                  disabled={usersLoading}
                   className="border border-gray-300 rounded-2xl py-2 px-5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="">Select assignee</option>
-                  <option>Alice Johnson</option>
-                  <option>Bob Smith</option>
-                  <option>Charlie Brown</option>
-                  <option>Diana Prince</option>
+                  <option value="">
+                    {usersLoading ? "Loading members..." : "Select assignee"}
+                  </option>
+
+                  {users.map((user) => (
+                    <option key={user._id} value={user._id}>
+                      {user.fname} {user.lname}
+                    </option>
+                  ))}
                 </select>
+                {usersError && (
+                  <span className="text-xs text-red-500">{usersError}</span>
+                )}
                 {errors.assignee && (
                   <span className="text-xs text-red-500">{errors.assignee.message}</span>
                 )}
@@ -185,39 +227,79 @@ const onSubmit = async (data: TaskFormValues) => {
                   {...register("tags")}
                   className="border border-gray-300 rounded-2xl py-2 px-5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
-                 {errors.tags && (
+                {errors.tags && (
                   <span className="text-xs text-red-500">{errors.tags.message}</span>
                 )}
               </div>
-             
             </div>
           </div>
 
           {/* ATTACHMENTS */}
           <div className="bg-white rounded-xl pt-6 pb-10 px-6 shadow-md">
             <h3 className="text-lg font-semibold text-slate-500">Attachments</h3>
-            <Controller
-              name="attachments"
-              control={control}
-              render={({ field: { onChange } }) => (
-                <label className="flex flex-col items-center gap-2 mt-4 border-2 border-dashed border-gray-300 p-10 rounded-2xl text-center transition-colors duration-300 hover:border-blue-500 cursor-pointer hover:bg-slate-50">
-                  <input
-                    type="file"
-                    onChange={(e) => onChange(e.target.files?.[0] ?? null)}
-                    className="hidden"
-                  />
-                  <LuFileUp size={40} className="text-blue-400" />
-                  <h2>{attachments ? attachments.name : "Drop files here or click to upload"}</h2>
-                  <p className="text-sm text-gray-400">
-                    {attachments
-                      ? `${(attachments.size / 1024 / 1024).toFixed(2)} MB`
-                      : "PNG, JPG, PDF, DOC up to 25MB"}
-                  </p>
-                </label>
-              )}
-            />
+            <p className="text-sm text-gray-400 mt-1">
+              Paste a shareable link (Google Drive, Dropbox, etc.) — make sure it's set to "Anyone with the link can view."
+            </p>
+
+            <div className="flex gap-2 mt-4">
+              <input
+                type="url"
+                placeholder="https://drive.google.com/..."
+                value={linkInput}
+                onChange={(e) => setLinkInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addLink();
+                  }
+                }}
+                className="flex-1 border border-gray-300 rounded-2xl py-2 px-5 bg-slate-100 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <button
+                type="button"
+                onClick={addLink}
+                className="bg-blue-600 px-5 py-2 rounded-2xl text-sm font-medium text-white hover:bg-blue-700 transition"
+              >
+                Add
+              </button>
+            </div>
+
+            {attachments.length > 0 && (
+              <ul className="flex flex-col gap-2 mt-4">
+                {attachments.map((link, index) => (
+                  <li
+                    key={index}
+                    className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-4 py-2 text-sm"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <LuLink size={16} className="text-blue-400 flex-shrink-0" />
+                      <a
+                        href={link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="truncate text-blue-600 hover:underline"
+                      >
+                        {link}
+                      </a>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeLink(index)}
+                      className="text-gray-400 hover:text-red-500 flex-shrink-0"
+                    >
+                      <LuX size={16} />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+
             {errors.attachments && (
-              <span className="text-xs text-red-500">{errors.attachments.message as string}</span>
+              <span className="text-xs text-red-500">
+                {Array.isArray(errors.attachments)
+                  ? errors.attachments[0]?.message
+                  : errors.attachments.message}
+              </span>
             )}
           </div>
 

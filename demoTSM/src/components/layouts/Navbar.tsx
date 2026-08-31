@@ -1,11 +1,13 @@
 import Btn from "../common/Btn";
 import { LuSearch, LuMenu } from "react-icons/lu";
 import { useNavigate } from "react-router"; 
-
+import { useAuth } from "../../Auth/authStore";
 // 1. ACCEPT THE PROP FROM THE LAYOUT PARENT
 function Navbar({ onOpenSidebar }) {
   const navigate = useNavigate();
   
+  const user = useAuth((state) => state.user);
+  const isAdmin = user?.role === "admin";
   const handleNewTask = () => {
     navigate("/newtask"); 
   };
@@ -31,5 +33,6 @@ function Navbar({ onOpenSidebar }) {
     </nav>
   );
 }
+
 
 export default Navbar;

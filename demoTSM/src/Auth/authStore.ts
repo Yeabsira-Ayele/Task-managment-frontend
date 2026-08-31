@@ -17,7 +17,6 @@ interface AuthInterface {
   error: string | null;
 
   login: (email: string, password: string) => Promise<void>;
-  register: (fname: string, lname: string, email: string, password: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -31,35 +30,55 @@ export const useAuth = create<AuthInterface>()(
 
       login: async (email, password) => {
         set({ loading: true, error: null });
-        try {
-          const res = await api.post("/login", { email, password });
-          const { token, user } = res.data;
-          api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-          set({ user, token, loading: false });
-        } catch (err: any) {
-          set({ error: err?.response?.data?.message ?? "Login failed", loading: false });
-          throw err;
-        }
-      },
 
-      register: async (fname, lname, email, password) => {
-        set({ loading: true, error: null });
         try {
-          const res = await api.post("/register", { fname, lname, email, password });
+          const res = await api.post("/login", {
+            email,
+            password,
+          });
+
           const { token, user } = res.data;
-          api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-          set({ user, token, loading: false });
+
+          api.defaults.headers.common[
+            "Authorization"
+          ] = `Bearer ${token}`;
+
+          set({
+            user,
+            token,
+            loading: false,
+          });
         } catch (err: any) {
-          set({ error: err?.response?.data?.message ?? "Registration failed", loading: false });
+          set({
+            error:
+              err?.response?.data?.message ?? "Login failed",
+            loading: false,
+          });
+
           throw err;
         }
       },
 
       logout: () => {
         delete api.defaults.headers.common["Authorization"];
-        set({ user: null, token: null });
+
+        set({
+          user: null,
+          token: null,
+          error: null,
+        });
       },
     }),
-    { name: "auth" }
+    {
+      name: "auth",
+
+      onRehydrateStorage: () => (state) => {
+        if (state?.token) {
+          api.defaults.headers.common[
+            "Authorization"
+          ] = `Bearer ${state.token}`;
+        }
+      },
+    }
   )
 );

@@ -14,13 +14,7 @@ export const taskSchema = z.object({
   assignee: z.string().min(1, "Please select an assignee"),
   dueDate: z.string().min(1, "Due date is required"),
   tags: z.string().min(1, "Tag is required"),
-  attachments: z
-    .instanceof(File)
-    .nullable()
-    .refine(
-      (file) => !file || file.size <= 25 * 1024 * 1024,
-      "File must be under 25MB"
-    ),
+  attachments: z.array(z.string().url("Enter a valid URL")).default([]),
 });
 
 export type TaskFormValues = z.infer<typeof taskSchema>;

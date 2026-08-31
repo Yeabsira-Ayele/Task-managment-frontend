@@ -1,17 +1,24 @@
-import Heading from "../components/common/Heading";
-import { useState, useEffect, type ChangeEvent, type FormEvent } from "react";
-import { LuFileUp, LuArrowLeft } from "react-icons/lu";
+import { useEffect, useState, type ChangeEvent, type FormEvent, type KeyboardEvent } from "react";
 import { useNavigate, useParams } from "react-router";
+
+import Heading from "../components/common/Heading";
 import { useTask } from "./store";
-import toast from "react-hot-toast";
+import { useAuth } from "../Auth/authStore";
+import api from "../api/axios";
+import { Link as LinkIcon, X } from "lucide-react";
 
-export default function EditTask() {
-  const navigate = useNavigate();
+type User = {
+  _id: string;
+  fname: string;
+  lname: string;
+};
+
+function EditTask() {
   const { id } = useParams();
+  const navigate = useNavigate();
 
-  const tasks = useTask((state) => state.tasks);
   const editTask = useTask((state) => state.setEdittask);
-  const fetchTasks = useTask((state) => state.fetchTasks); // FIX: needed in case store is empty on direct load/refresh
+  const currentUser = useAuth((state) => state.user);
 
   const [task, setTask] = useState({
     taskTitle: "",
@@ -21,300 +28,371 @@ export default function EditTask() {
     assignee: "",
     dueDate: "",
     tags: "",
-    file: null as File | null,
+    attachments: [] as string[],
   });
 
-  const [notFound, setNotFound] = useState(false);
+  const [linkInput, setLinkInput] = useState("");
 
-  // FIX: fetch tasks if the store is empty (e.g. user landed directly on /tasks/:id/edit via refresh)
-  useEffect(() => {
-    if (tasks.length === 0) {
-      fetchTasks();
-    }
-  }, [tasks.length, fetchTasks]);
-
-  useEffect(() => {
-    // FIX: was `t.id === Number(id)`. Your task ids are Mongo ObjectId strings
-    // (e.g. "64f1a2b3c9d4e5f6a7b8c9d0"), and Number() on that string is NaN,
-    // so this comparison could never match — every edit page thought the task didn't exist.
-    const existing = tasks.find((t) => t.id === id);
-
-    if (!existing) {
-      setNotFound(true);
-      return;
-    }
-
-    setNotFound(false);
-    setTask({
-      taskTitle: existing.taskTitle,
-      description: existing.description,
-      status: existing.status,
-      priority: existing.priority,
-      assignee: existing.assignee,
-      dueDate: existing.dueDate,
-      tags: existing.tags,
-      file: null,
-      // FIX: `existing.file` doesn't exist on TaskType — the field is `fileUrl: string | null`,
-      // and it's a URL string from the server, not a browser File object. You can't put a URL
-      // string into an <input type="file">'s preview logic the same way. Resetting to null here;
-      // see the attachments section below for how existing files are now shown.
-    });
-  }, [id, tasks]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [usersError, setUsersError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const handleChange = (
     e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
-    setTask({
-      ...task,
-      [e.target.name]: e.target.value,
-    });
+    const { name, value } = e.target;
+    setTask((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] ?? null;
+  const addLink = () => {
+    const trimmed = linkInput.trim();
+    if (!trimmed) return;
+    setTask((prev) => ({ ...prev, attachments: [...prev.attachments, trimmed] }));
+    setLinkInput("");
+  };
+
+  const removeLink = (index: number) => {
     setTask((prev) => ({
       ...prev,
-      file,
+      attachments: prev.attachments.filter((_, i) => i !== index),
     }));
   };
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-
-    // FIX: was `tasks.find((t) => t.id === Number(id))` — same Number() bug as above
-    const existing = tasks.find((t) => t.id === id);
-    if (!existing || !id) return;
-
-    try {
-      // FIX: `editTask` (setEdittask in the store) has the signature
-      //   setEdittask: (id: string, updatedTask: TaskFormInput) => Promise<void>
-      // but this was calling `editTask({...existing, taskTitle, ...})` — passing a single
-      // object as the first arg instead of (id, updates). That means `id` inside the store
-      // action would actually receive the whole task object, and `updatedTask` would be
-      // undefined — the PATCH request would hit a broken URL and send no body.
-      //
-      // Also removed `file` from the payload — TaskFormInput doesn't include a `file` field
-      // (it's Omit<TaskType, "id" | "createdAt" | "fileUrl">), and your backend controller
-      // doesn't currently handle multipart file uploads at all — sending a File object as JSON
-      // would either be dropped or serialize to "[object File]". File upload needs its own
-      // multipart endpoint (e.g. multer) before this can work; flagging it here rather than
-      // silently pretending it's implemented.
-      await editTask(id, {
-        taskTitle: task.taskTitle,
-        description: task.description,
-        status: task.status,
-        priority: task.priority,
-        assignee: task.assignee,
-        dueDate: task.dueDate,
-        tags: task.tags,
-      });
-
-      toast.success("Task Updated");
-      navigate(`/tasks/${id}`);
-    } catch (error) {
-      toast.error("Failed to update task. Try again!"); // FIX: was missing — silent failure before
+  const handleLinkKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      addLink();
     }
   };
 
-  const backToTask = () => {
-    navigate(`/tasks/${id}`);
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        setUsersLoading(true);
+        const res = await api.get("/users");
+        setUsers(res.data?.data ?? []);
+      } catch (err: any) {
+        console.error("Failed to fetch users:", err);
+        setUsersError(err?.response?.data?.error ?? "Failed to load users");
+      } finally {
+        setUsersLoading(false);
+      }
+    };
+    fetchUsers();
+  }, []);
+
+  useEffect(() => {
+    if (!id) return;
+
+    const fetchTask = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const res = await api.get(`/task/${id}`);
+        const existing = res.data?.data;
+
+        if (!existing) {
+          setError("Task not found");
+          return;
+        }
+
+        setTask({
+          taskTitle: existing.taskTitle ?? "",
+          description: existing.description ?? "",
+          status: existing.status ?? "",
+          priority: existing.priority ?? "",
+          assignee: existing.assignee?.id ?? existing.assignee?._id ?? "",
+          dueDate: existing.dueDate ? existing.dueDate.slice(0, 10) : "",
+          tags: Array.isArray(existing.tags) ? existing.tags.join(", ") : existing.tags ?? "",
+          attachments: Array.isArray(existing.attachments) ? existing.attachments : [],
+        });
+      } catch (err: any) {
+        console.error("Failed to fetch task:", err);
+        setError(err?.response?.data?.error ?? "Failed to load task");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTask();
+  }, [id]);
+
+  const isAdmin = currentUser?.role === "admin";
+  const isOwner = task.assignee !== "" && task.assignee === currentUser?.id;
+  const canEditFully = isAdmin;
+  const canEditAtAll = isAdmin || isOwner;
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!id) return;
+
+    try {
+      setSaving(true);
+      setError(null);
+
+      const payload = canEditFully
+        ? {
+            taskTitle: task.taskTitle,
+            description: task.description,
+            status: task.status,
+            priority: task.priority,
+            assignee: task.assignee,
+            dueDate: task.dueDate,
+            tags: task.tags,
+            attachments: task.attachments,
+          }
+        : { status: task.status };
+
+      await editTask(id, payload as any);
+      navigate(`/tasks/${id}`);
+    } catch (err: any) {
+      console.error("Failed to update task:", err);
+      setError(err?.response?.data?.error ?? "Failed to update task");
+    } finally {
+      setSaving(false);
+    }
   };
 
-  if (notFound) {
+  if (loading) {
     return (
-      <div className="flex justify-center items-center p-10">
-        <div className="text-center">
-          <h2 className="text-lg font-semibold text-slate-700">Task not found</h2>
-          <p className="text-sm text-slate-400 mt-1">
-            The task you're trying to edit doesn't exist.
-          </p>
-          <button
-            onClick={() => navigate("/tasks")} // FIX: was "/task" (singular) — not a real route
-            className="mt-4 text-sm text-blue-600 hover:underline"
-          >
-            Back to Tasks
-          </button>
+      <div className="w-full p-6">
+        <div className="p-10 text-center text-gray-400">Loading task...</div>
+      </div>
+    );
+  }
+
+  if (error && !task.taskTitle) {
+    return (
+      <div className="w-full p-6">
+        <div className="p-10 text-center text-red-500">{error}</div>
+      </div>
+    );
+  }
+
+  if (!canEditAtAll) {
+    return (
+      <div className="w-full p-6">
+        <div className="p-10 text-center text-gray-500">
+          You don't have permission to edit this task.
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex justify-center items-center p-3 bg-slate-50">
-      <div className="bg-transparent flex flex-col justify-center gap-4 p-4 rounded-2xl w-full max-w-[700px]">
+    <div className="w-full p-6">
+      <Heading title="Edit Task" content="Update task information" />
 
-        {/* Header Section */}
-        <div className="flex items-center gap-2">
-          <LuArrowLeft
-            size={20}
-            className="text-gray-400 cursor-pointer hover:text-gray-600 transition-colors"
-            onClick={backToTask}
-          />
-          <Heading title="Edit task" content="Update the details below and save your changes" />
+      {!canEditFully && (
+        <div className="mt-4 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 text-sm">
+          You can only update the status of this task. Other fields are shown for reference and are locked.
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="mt-6 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+        {error && (
+          <div className="mb-5 rounded-xl bg-red-50 border border-red-200 text-red-600 px-4 py-3 text-sm">
+            {error}
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="flex flex-col gap-2">
+            <label htmlFor="taskTitle" className="text-sm font-semibold text-gray-700">Task Title</label>
+            <input
+              id="taskTitle"
+              name="taskTitle"
+              type="text"
+              value={task.taskTitle}
+              onChange={handleChange}
+              required
+              disabled={!canEditFully}
+              className="border border-gray-300 rounded-2xl px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-400"
+            />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label htmlFor="assignee" className="text-sm font-semibold text-gray-700">Assignee</label>
+            <select
+              id="assignee"
+              name="assignee"
+              value={task.assignee}
+              onChange={handleChange}
+              disabled={usersLoading || !canEditFully}
+              required
+              className="border border-gray-300 rounded-2xl px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-400"
+            >
+              <option value="">{usersLoading ? "Loading members..." : "Select assignee"}</option>
+              {users.map((user) => (
+                <option key={user._id} value={user._id}>{user.fname} {user.lname}</option>
+              ))}
+            </select>
+            {usersError && <span className="text-xs text-red-500">{usersError}</span>}
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label htmlFor="status" className="text-sm font-semibold text-gray-700">Status</label>
+            <select
+              id="status"
+              name="status"
+              value={task.status}
+              onChange={handleChange}
+              required
+              className="border border-gray-300 rounded-2xl px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Select status</option>
+              <option value="To Do">To Do</option>
+              <option value="In Progress">In Progress</option>
+              <option value="In Review">In Review</option>
+              <option value="Completed">Completed</option>
+              <option value="Cancelled">Cancelled</option>
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label htmlFor="priority" className="text-sm font-semibold text-gray-700">Priority</label>
+            <select
+              id="priority"
+              name="priority"
+              value={task.priority}
+              onChange={handleChange}
+              required
+              disabled={!canEditFully}
+              className="border border-gray-300 rounded-2xl px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-400"
+            >
+              <option value="">Select priority</option>
+              <option value="Urgent">Urgent</option>
+              <option value="High">High</option>
+              <option value="Medium">Medium</option>
+              <option value="Low">Low</option>
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label htmlFor="dueDate" className="text-sm font-semibold text-gray-700">Due Date</label>
+            <input
+              id="dueDate"
+              name="dueDate"
+              type="date"
+              value={task.dueDate}
+              onChange={handleChange}
+              required
+              disabled={!canEditFully}
+              className="border border-gray-300 rounded-2xl px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-400"
+            />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label htmlFor="tags" className="text-sm font-semibold text-gray-700">Tags</label>
+            <input
+              id="tags"
+              name="tags"
+              type="text"
+              value={task.tags}
+              onChange={handleChange}
+              placeholder="frontend, react, dashboard"
+              disabled={!canEditFully}
+              className="border border-gray-300 rounded-2xl px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-400"
+            />
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <div className="flex flex-col gap-2 mt-6">
+          <label htmlFor="description" className="text-sm font-semibold text-gray-700">Description</label>
+          <textarea
+            id="description"
+            name="description"
+            value={task.description}
+            onChange={handleChange}
+            rows={5}
+            required
+            disabled={!canEditFully}
+            className="border border-gray-300 rounded-2xl px-4 py-3 text-sm outline-none resize-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-400"
+          />
+        </div>
 
-          {/* BASIC INFO */}
-          <div className="bg-white rounded-xl pt-6 pb-10 px-6 shadow-md">
-            <h3 className="text-lg font-semibold text-slate-500">BASIC INFO</h3>
-            <div className="flex flex-col gap-4 mt-4">
+        <div className="flex flex-col gap-2 mt-6">
+          <label className="text-sm font-semibold text-gray-700">Attachments</label>
 
-              <div className="flex flex-col gap-2">
-                <label htmlFor="taskName" className="block text-sm font-medium">
-                  Task Name
-                </label>
-                <input
-                  type="text"
-                  name="taskTitle"
-                  value={task.taskTitle}
-                  onChange={handleChange}
-                  id="taskName"
-                  placeholder="Task Name"
-                  className="border border-gray-300 rounded-2xl py-2 px-5 bg-slate-100 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <label htmlFor="description" className="block text-sm font-medium">
-                  Description
-                </label>
-                <textarea
-                  name="description"
-                  id="description"
-                  cols={30}
-                  rows={4}
-                  value={task.description}
-                  onChange={handleChange}
-                  placeholder="Add task description here..."
-                  className="border border-gray-300 rounded-2xl py-2 px-5 bg-slate-100 text-sm resize-none focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                ></textarea>
-              </div>
-            </div>
-          </div>
-
-          {/* DETAILS */}
-          <div className="bg-white rounded-xl pt-6 pb-10 px-6 shadow-md flex flex-col gap-4">
-            <h3 className="text-lg font-semibold text-slate-500">Details</h3>
-            <div className="flex flex-col gap-4">
-
-              <div className="flex flex-col gap-2">
-                <label>Status</label>
-                <select
-                  name="status"
-                  value={task.status}
-                  onChange={handleChange}
-                  className="border border-gray-300 rounded-2xl py-2 px-5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option>To Do</option>
-                  <option>In Progress</option>
-                  <option>In Review</option>
-                  <option>Completed</option>
-                  <option>Cancelled</option>
-                </select>
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <label>Priority</label>
-                <select
-                  name="priority"
-                  value={task.priority}
-                  onChange={handleChange}
-                  className="border border-gray-300 rounded-2xl py-2 px-5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option>Urgent</option>
-                  <option>High</option>
-                  <option>Medium</option>
-                  <option>Low</option>
-                </select>
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <label>Assignee</label>
-                <select
-                  name="assignee"
-                  value={task.assignee}
-                  onChange={handleChange}
-                  className="border border-gray-300 rounded-2xl py-2 px-5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option>Alice Johnson</option>
-                  <option>Bob Smith</option>
-                  <option>Charlie Brown</option>
-                  <option>Diana Prince</option>
-                </select>
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <label>Due Date</label>
-                <input
-                  name="dueDate"
-                  type="date"
-                  value={task.dueDate}
-                  onChange={handleChange}
-                  className="border border-gray-300 rounded-2xl py-2 px-5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <label>Tags</label>
-                <input
-                  name="tags"
-                  type="text"
-                  value={task.tags}
-                  onChange={handleChange}
-                  placeholder="Ux , Design  , ..."
-                  className="border border-gray-300 rounded-2xl py-2 px-5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* ATTACHMENTS */}
-          <div className="bg-white rounded-xl pt-6 pb-10 px-6 shadow-md">
-            <h3 className="text-lg font-semibold text-slate-500">Attachments</h3>
-            <label className="flex flex-col items-center gap-2 mt-4 border-2 border-dashed border-gray-300 p-10 rounded-2xl text-center transition-colors duration-300 hover:border-blue-500 cursor-pointer hover:bg-slate-50">
+          {canEditFully && (
+            <div className="flex gap-2">
               <input
-                type="file"
-                name="attachments"
-                onChange={handleFileChange}
-                className="hidden"
+                type="url"
+                placeholder="https://drive.google.com/..."
+                value={linkInput}
+                onChange={(e) => setLinkInput(e.target.value)}
+                onKeyDown={handleLinkKeyDown}
+                className="flex-1 border border-gray-300 rounded-2xl px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
               />
-              <LuFileUp size={40} className="text-blue-400" />
-              <h2>
-                {task.file
-                  ? task.file.name
-                  : "Drop files here or click to upload"}
-              </h2>
-              <p className="text-sm text-gray-400">
-                {task.file
-                  ? `${(task.file.size / 1024 / 1024).toFixed(2)} MB`
-                  : "PNG, JPG, PDF, DOC up to 25MB"}
-              </p>
-            </label>
-            {/* FIX: note — file upload isn't wired to the backend yet (no multipart endpoint),
-                so selecting a file here currently has no effect on save. Flagging rather than
-                silently dropping it, so it's a known TODO instead of a surprise bug later. */}
-          </div>
+              <button
+                type="button"
+                onClick={addLink}
+                className="px-5 py-2 rounded-2xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition"
+              >
+                Add
+              </button>
+            </div>
+          )}
 
-          {/* SUBMIT BUTTON */}
-          <div className="flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={backToTask}
-              className="border border-gray-300 px-6 py-2 rounded-2xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="bg-blue-600 px-6 py-2 rounded-2xl text-sm font-medium text-white hover:bg-blue-700 shadow-sm transition"
-            >
-              Save Changes
-            </button>
-          </div>
+          {task.attachments.length > 0 ? (
+            <ul className="flex flex-col gap-2 mt-2">
+              {task.attachments.map((link, index) => (
+                <li
+                  key={index}
+                  className="flex items-center justify-between gap-3 rounded-xl bg-gray-50 px-4 py-2 text-sm"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <LinkIcon size={16} className="text-blue-400 flex-shrink-0" />
+                    <a
+                      href={link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="truncate text-blue-600 hover:underline"
+                    >
+                      {link}
+                    </a>
+                  </div>
+                  {canEditFully && (
+                    <button
+                      type="button"
+                      onClick={() => removeLink(index)}
+                      className="text-gray-400 hover:text-red-500 flex-shrink-0"
+                    >
+                      <X size={16} />
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <span className="text-sm text-gray-400 italic mt-1">No attachments</span>
+          )}
+        </div>
 
-        </form>
-      </div>
+        <div className="flex justify-end gap-3 mt-8">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            disabled={saving}
+            className="px-6 py-3 rounded-2xl border border-gray-300 text-sm font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={saving}
+            className="px-6 py-3 rounded-2xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-50"
+          >
+            {saving ? "Saving..." : "Save Changes"}
+          </button>
+        </div>
+      </form>
     </div>
   );
 }
+
+export default EditTask;
