@@ -1,4 +1,3 @@
-import React from "react";
 
 // Using (string & {}) preserves IDE autocomplete while still allowing any string
 type BadgeStatus = "Upcoming" | "Completed" | "Cancelled" | "Progress" | "Done" | "Review" | "To do" | (string & {});

@@ -1,5 +1,4 @@
 import type { UseFormRegisterReturn } from "react-hook-form";
-import { useEffect, useRef } from "react";
 
 interface InputFieldProps {
   id: string;

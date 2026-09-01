@@ -3,7 +3,6 @@ import {
   LuX,
   LuLayoutGrid,
   LuSquareCheck,
-  LuCalendar,
   LuUsers,
 } from "react-icons/lu";
 import Logo from "../common/Logo.tsx";
@@ -13,7 +12,12 @@ import { useAuth } from "../../Auth/authStore.ts";
 import { LogOut } from "lucide-react";
 import Logout from "../forms/logout.tsx";
 
-function Sidebar({ isOpen, onClose }) {
+interface SidebarProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+function Sidebar({ isOpen, onClose } : SidebarProps) {
   const user = useAuth((state) => state.user);
   const isAdmin = user?.role === "admin";
 
@@ -33,7 +37,7 @@ function Sidebar({ isOpen, onClose }) {
     navigate("/login", { replace: true });
   };
 
-  const getNavLinkClass = ({ isActive }) => {
+  const getNavLinkClass = ({ isActive }:  { isActive: boolean }) => {
     const baseClasses = "mb-1 flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition";
     return isActive
       ? `${baseClasses} bg-blue-50 text-blue-600`
