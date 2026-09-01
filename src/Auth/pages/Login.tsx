@@ -44,16 +44,8 @@ function Login() {
         <h1 className="text-3xl font-bold text-slate-900">Welcome back</h1>
         <p className="mb-5 mt-1 text-gray-500">Sign in to continue</p>
 
-        <Btn variant="secondary" type="button">
-          <FcGoogle className="text-lg" />
-          Continue with Google
-        </Btn>
-
-        <div className="my-6 flex items-center">
-          <div className="h-px flex-1 bg-gray-300" />
-          <span className="mx-4 text-sm text-gray-500">or continue with email</span>
-          <div className="h-px flex-1 bg-gray-300" />
-        </div>
+        
+        
 
         <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col items-center gap-5">
           <InputField
