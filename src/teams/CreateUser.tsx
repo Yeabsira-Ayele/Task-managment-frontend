@@ -1,6 +1,5 @@
 import { useState } from "react";
 import api from "../api/axios";
-import InputField from "../components/forms/InputField";
 import Btn from "../components/common/Btn";
 
 function CreateUser() {

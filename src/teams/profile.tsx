@@ -1,6 +1,5 @@
 import { useState } from "react";
 import Heading from "../components/common/Heading";
-import { AssigneeAvatar } from "../tasks/components/AssigneeAvatar";
 import api from "../api/axios";
 import { useAuth } from "../Auth/authStore";
 import toast from "react-hot-toast";

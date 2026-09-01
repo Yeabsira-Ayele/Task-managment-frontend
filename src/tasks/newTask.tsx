@@ -31,25 +31,25 @@ export default function NewTask() {
       .finally(() => setUsersLoading(false));
   }, []);
 
-  const {
-    register,
-    handleSubmit,
-    watch,
-    setValue,
-    formState: { errors },
-  } = useForm<TaskFormValues>({
-    resolver: zodResolver(taskSchema),
-    defaultValues: {
-      taskTitle: "",
-      description: "",
-      status: "",
-      priority: "",
-      assignee: "",
-      dueDate: "",
-      tags: "",
-      attachments: [],
-    },
-  });
+const {
+  register,
+  handleSubmit,
+  watch,
+  setValue,
+  formState: { errors },
+} = useForm<TaskFormValues>({
+  resolver: zodResolver(taskSchema),
+  defaultValues: {
+    taskTitle: "",
+    description: "",
+    status: "",
+    priority: "",
+    assignee: "",
+    dueDate: "",
+    tags: "",
+    attachments: [],
+  },
+});
 
   const [linkInput, setLinkInput] = useState("");
   const attachments = watch("attachments");
@@ -73,26 +73,25 @@ export default function NewTask() {
     navigate("/tasks");
   };
 
-  const onSubmit = async (data: TaskFormValues) => {
-    try {
-      await createTask({
-        taskTitle: data.taskTitle,
-        description: data.description,
-        status: data.status,
-        priority: data.priority,
-        assignee: data.assignee,
-        dueDate: data.dueDate,
-        tags: data.tags,
-        attachments: data.attachments,
-      });
+ const onSubmit = async (data: TaskFormValues) => {
+  try {
+    await createTask({
+      taskTitle: data.taskTitle,
+      description: data.description,
+      status: data.status,
+      priority: data.priority,
+      assignee: data.assignee,
+      dueDate: data.dueDate,
+      tags: data.tags,
+      attachments: data.attachments,
+    });
 
-      toast.success("New Task Created!");
-      navigate("/dashboard");
-    } catch (error) {
-      toast.error("Failed to save task. Try again!");
-    }
-  };
-
+    toast.success("New Task Created!");
+    navigate("/dashboard");
+  } catch (error) {
+    toast.error("Failed to save task. Try again!");
+  }
+};
   return (
     <div className="flex justify-center items-center p-3 bg-slate-50">
       <div className="bg-transparent flex flex-col justify-center gap-4 p-4 rounded-2xl w-full max-w-[700px]">
