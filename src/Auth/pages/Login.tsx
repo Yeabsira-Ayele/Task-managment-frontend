@@ -43,10 +43,6 @@ function Login() {
 
         <h1 className="text-3xl font-bold text-slate-900">Welcome back</h1>
         <p className="mb-5 mt-1 text-gray-500">Sign in to continue</p>
-
-        
-        
-
         <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col items-center gap-5">
           <InputField
             id="email"
