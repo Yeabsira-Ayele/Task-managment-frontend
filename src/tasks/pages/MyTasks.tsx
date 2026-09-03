@@ -8,12 +8,12 @@ import {
 import { LuSearch } from "react-icons/lu";
 import { useNavigate } from "react-router";
 
-import Heading from "../components/common/Heading";
-import { PriorityIndicator } from "./components/PriorityIndicator";
-import { AssigneeAvatar } from "./components/AssigneeAvatar";
+import Heading from "../../components/common/Heading";
+import { PriorityIndicator } from "../components/PriorityIndicator";
+import { AssigneeAvatar } from "../components/AssigneeAvatar";
 
-import { useTask } from "./store";
-import { useAuth } from "../Auth/authStore";
+import { useTask } from "../store";
+import { useAuth } from "../../Auth/authStore";
 
 const formatDueDate = (dueDate: string) => {
   if (!dueDate) return "No date";

@@ -8,8 +8,7 @@ import InputFieldPWD from "../../components/forms/PasswordInput";
 import InputField from "../../components/forms/InputField";
 import Btn from "../../components/common/Btn";
 import toast from "react-hot-toast";
-import { FcGoogle } from "react-icons/fc";
-import { useAuth } from "../authStore"; // FIX: new import — adjust path to wherever you place authStore.ts
+import { useAuth } from "../authStore"; 
 
 function Login() {
   const navigate = useNavigate();
@@ -69,17 +68,7 @@ function Login() {
          <button onClick={() => navigate("/forgot-password")} type="button" className="text-sm text-blue-600 hover:underline">
           Forgot password?
          </button>
-        <p className="mt-4 text-center text-sm text-gray-500">
-          Don't have an account?{" "}
-          <button
-            onClick={handleNavigateToRegister}
-            type="button"
-            className="cursor-pointer font-semibold text-blue-600 hover:underline"
-          >
-            Sign up
-          </button>
-        </p>
-
+        
       </div>
     </div>
   );

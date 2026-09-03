@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import Heading from "../components/common/Heading";
-import api from "../api/axios";
-import { useAuth } from "../Auth/authStore";
+import Heading from "../../components/common/Heading";
+import api from "../../api/axios";
+import { useAuth } from "../../Auth/authStore";
 import { Trash2, X } from "lucide-react";
 import toast from "react-hot-toast";
 

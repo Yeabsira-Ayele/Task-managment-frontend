@@ -1,13 +1,13 @@
 import { useEffect, useMemo } from "react";
-import Heading from "../components/common/Heading";
-import Card from "../components/common/card";
+import Heading from "../../components/common/Heading";
+import Card from "../../components/common/card";
 import { LuFlag, LuEye, LuCircleCheck, LuCircleAlert, LuSquareCheckBig } from "react-icons/lu";
-import Deadline from "./components/Deadline";
-import { TaskDonutChart } from "./components/donutchart";
-import { BarChartComponent } from "./components/Bar";
-import { LineChartComponent } from "./components/linechart";
-import { useTask } from "../tasks/store";
-import { useDashboardData } from "./data/dashboard";
+import Deadline from "../components/Deadline";
+import { TaskDonutChart } from "../components/donutchart";
+import { BarChartComponent } from "../components/Bar";
+import { LineChartComponent } from "../components/linechart";
+import { useTask } from "../../tasks/store";
+import { useDashboardData } from "../data/dashboard";
 
 function Dashboard() {
   const tasks = useTask((state) => state.tasks);

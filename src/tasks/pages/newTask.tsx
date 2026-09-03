@@ -1,13 +1,13 @@
-import Heading from "../components/common/Heading";
+import Heading from "../../components/common/Heading";
 import { LuArrowLeft, LuLink, LuX } from "react-icons/lu";
 import { useNavigate } from "react-router";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
-import { useTask } from "./store";
+import { useTask } from "../store";
 import toast from "react-hot-toast";
-import api from "../api/axios";
-import { taskSchema, type TaskFormValues } from "./taskValidation";
+import api from "../../api/axios";
+import { taskSchema, type TaskFormValues } from "../taskValidation";
 
 type ApiUser = {
   _id: string;

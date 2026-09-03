@@ -1,10 +1,10 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent, type KeyboardEvent } from "react";
 import { useNavigate, useParams } from "react-router";
 
-import Heading from "../components/common/Heading";
-import { useTask } from "./store";
-import { useAuth } from "../Auth/authStore";
-import api from "../api/axios";
+import Heading from "../../components/common/Heading";
+import { useTask } from "../store";
+import { useAuth } from "../../Auth/authStore";
+import api from "../../api/axios";
 import { Link as LinkIcon, X } from "lucide-react";
 
 type User = {

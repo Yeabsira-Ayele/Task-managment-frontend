@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import Heading from "../components/common/Heading";
-import api from "../api/axios";
-import { useTask } from "../tasks/store";
+import Heading from "../../components/common/Heading";
+import api from "../../api/axios";
+import { useTask } from "../../tasks/store";
 
 type ApiUser = {
   _id: string;

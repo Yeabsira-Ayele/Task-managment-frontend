@@ -1,11 +1,11 @@
 import { LuSearch } from "react-icons/lu";
 import { useEffect, useMemo, type ChangeEvent } from "react";
 import { useNavigate } from "react-router";
-import Heading from "../components/common/Heading";
-import { StatusBadge } from "./components/statusBadge";
-import { PriorityIndicator } from "./components/PriorityIndicator";
-import { AssigneeAvatar } from "./components/AssigneeAvatar";
-import { useTask } from "./store";
+import Heading from "../../components/common/Heading";
+import { StatusBadge } from "../components/statusBadge";
+import { PriorityIndicator } from "../components/PriorityIndicator";
+import { AssigneeAvatar } from "../components/AssigneeAvatar";
+import { useTask } from "../store";
 
 // FIX: centralizes safe date formatting so a bad/missing dueDate doesn't render
 // "Invalid Date" or crash — used in the row below.

@@ -1,6 +1,6 @@
 import { useState } from "react";
-import api from "../api/axios";
-import Btn from "../components/common/Btn";
+import api from "../../api/axios";
+import Btn from "../../components/common/Btn";
 
 function CreateUser() {
   const [fname, setFname] = useState("");

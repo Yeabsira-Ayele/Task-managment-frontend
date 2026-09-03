@@ -11,11 +11,11 @@ import {
   ExternalLink,
 } from "lucide-react";
 
-import { AssigneeAvatar } from "./components/AssigneeAvatar";
-import { PriorityIndicator } from "./components/PriorityIndicator";
-import { StatusBadge } from "./components/statusBadge";
-import { useTask } from "./store";
-import { useAuth } from "../Auth/authStore"; // FIX: needed to check role
+import { AssigneeAvatar } from "../components/AssigneeAvatar";
+import { PriorityIndicator } from "../components/PriorityIndicator";
+import { StatusBadge } from "../components/statusBadge";
+import { useTask } from "../store";
+import { useAuth } from "../../Auth/authStore"; // FIX: needed to check role
 
 const formatDueDate = (dueDate: string) => {
   if (!dueDate) return "Not set";
