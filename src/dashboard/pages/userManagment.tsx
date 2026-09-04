@@ -71,11 +71,59 @@ export default function UserManagement() {
   if (error) return <div className="p-10 text-center text-red-500">{error}</div>;
 
   return (
-    <div className="min-h-screen bg-slate-50 p-8">
+    <div className="min-h-screen bg-slate-50 p-4 sm:p-8">
       <Heading title="User Management" content={`${users.length} registered user${users.length === 1 ? "" : "s"}`} />
 
-      <div className="mt-6 rounded-2xl border border-slate-100 bg-white shadow-sm overflow-hidden">
-        <table className="w-full text-sm">
+      {/* Mobile card list (below md) */}
+      <div className="mt-6 md:hidden flex flex-col gap-3">
+        {users.map((user) => {
+          const isSelf = user._id === currentUser?.id;
+          return (
+            <div key={user._id} className="rounded-2xl border border-slate-100 bg-white shadow-sm p-4 flex flex-col gap-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-semibold text-slate-800 text-sm truncate">
+                    {user.fname} {user.lname}
+                    {isSelf && <span className="ml-2 text-xs font-normal text-slate-400">(you)</span>}
+                  </p>
+                  <p className="text-xs text-slate-500 mt-0.5 break-all">{user.email}</p>
+                </div>
+                <button
+                  onClick={() => setDeleteTarget(user)}
+                  disabled={isSelf}
+                  title={isSelf ? "You can't delete your own account" : "Remove user"}
+                  className="text-red-400 hover:text-red-600 disabled:opacity-30 disabled:cursor-not-allowed transition shrink-0"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between pt-2 border-t border-slate-50">
+                <select
+                  value={user.role}
+                  disabled={isSelf || updatingId === user._id}
+                  onChange={(e) => handleRoleChange(user._id, e.target.value as "admin" | "member")}
+                  className="border border-gray-300 rounded-xl px-3 py-1.5 text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-400"
+                >
+                  <option value="member">Member</option>
+                  <option value="admin">Admin</option>
+                </select>
+                <span className="text-xs text-slate-400">{new Date(user.createdAt).toLocaleDateString()}</span>
+              </div>
+            </div>
+          );
+        })}
+
+        {users.length === 0 && (
+          <div className="p-10 text-center text-gray-400 text-sm font-medium bg-white rounded-2xl border border-slate-100">
+            No users found.
+          </div>
+        )}
+      </div>
+
+      {/* Desktop table (md and up) */}
+      <div className="mt-6 hidden md:block rounded-2xl border border-slate-100 bg-white shadow-sm overflow-x-auto">
+        <table className="w-full min-w-[720px] text-sm">
           <thead>
             <tr className="border-b border-slate-100 text-left text-xs uppercase tracking-wider text-slate-400">
               <th className="px-6 py-4 font-bold">Name</th>
@@ -144,7 +192,7 @@ export default function UserManagement() {
               <span className="font-medium text-slate-900">{deleteTarget.fname} {deleteTarget.lname}</span>?
               Tasks currently assigned to them will show as <strong>Unassigned</strong>. This cannot be undone.
             </p>
-            <div className="flex justify-end gap-3">
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-3">
               <button
                 onClick={() => setDeleteTarget(null)}
                 disabled={deleting}

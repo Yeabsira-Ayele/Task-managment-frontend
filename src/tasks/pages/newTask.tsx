@@ -241,7 +241,7 @@ const {
               Paste a shareable link (Google Drive, Dropbox, etc.) — make sure it's set to "Anyone with the link can view."
             </p>
 
-            <div className="flex gap-2 mt-4">
+            <div className="flex flex-col md:flex-row gap-2 mt-4">
               <input
                 type="url"
                 placeholder="https://drive.google.com/..."

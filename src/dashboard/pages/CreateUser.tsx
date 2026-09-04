@@ -37,7 +37,7 @@ function CreateUser() {
     <div className="flex justify-center py-7">
 
     
-    <div className="w-full max-w-md rounded-2xl bg-white p-6  shadow-sm border border-gray-200">
+    <div className="w-full max-w-md rounded-2xl bg-white p-6  shadow-sm border m-8 border-gray-200">
       <h2 className="text-lg font-semibold text-gray-900">Create a new user</h2>
       <p className="mt-1 text-sm text-gray-500">
         Set up their account directly — they can log in right away.

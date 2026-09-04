@@ -319,7 +319,7 @@ function EditTask() {
           <label className="text-sm font-semibold text-gray-700">Attachments</label>
 
           {canEditFully && (
-            <div className="flex gap-2">
+            <div className="flex flex-col md:flex-row gap-2">
               <input
                 type="url"
                 placeholder="https://drive.google.com/..."
