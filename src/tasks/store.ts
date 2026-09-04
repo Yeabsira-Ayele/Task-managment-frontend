@@ -1,9 +1,9 @@
 import { devtools, persist } from "zustand/middleware";
 import { create } from "zustand";
 import api from "../api/axios";
-
+ 
 export type TaskAssignee = { id: string; fname: string; lname: string };
-
+ 
 export type TaskType = {
   id: string;
   taskTitle: string;
@@ -16,7 +16,7 @@ export type TaskType = {
   createdAt: string;
   attachments: string[];
 };
-
+ 
 export type TaskFormInput = {
   taskTitle: string;
   description: string;
@@ -27,27 +27,31 @@ export type TaskFormInput = {
   tags: string;
   attachments: string[];
 };
-
+ 
+export type ViewMode = "list" | "kanban";
+ 
 interface TaskInterface {
   tasks: TaskType[];
   searchTerm: string;
   statusFilter: string;
   priorityFilter: string;
+  viewMode: ViewMode;
   loading: boolean;
   error: string | null;
-
+ 
   fetchTasks: () => Promise<void>;
   setCreatetask: (newTask: TaskFormInput) => Promise<void>;
   setDeletetask: (id: string) => Promise<void>;
   setEdittask: (id: string, updatedTask: TaskFormInput) => Promise<void>;
-
+ 
   setsearchTerm: (terms: string) => void;
   setstatusFilter: (taskstatus: string) => void;
   setpriorityFilter: (taskPriority: string) => void;
-
+  setViewMode: (mode: ViewMode) => void;
+ 
   updateTaskStatus: (id: string, status: string) => Promise<void>;
 }
-
+ 
 const normalizeTask = (raw: any): TaskType => ({
   id: raw.id ?? raw._id,
   taskTitle: raw.taskTitle ?? "",
@@ -62,7 +66,7 @@ const normalizeTask = (raw: any): TaskType => ({
   createdAt: raw.createdAt ?? "",
   attachments: Array.isArray(raw.attachments) ? raw.attachments : [],
 });
-
+ 
 export const useTask = create<TaskInterface>()(
   devtools(
     persist(
@@ -71,9 +75,10 @@ export const useTask = create<TaskInterface>()(
         searchTerm: "",
         statusFilter: "",
         priorityFilter: "",
+        viewMode: "list",
         loading: false,
         error: null,
-
+ 
         fetchTasks: async () => {
           set({ loading: true, error: null });
           try {
@@ -87,7 +92,7 @@ export const useTask = create<TaskInterface>()(
             });
           }
         },
-
+ 
         setCreatetask: async (newTask) => {
           set({ loading: true, error: null });
           try {
@@ -99,7 +104,7 @@ export const useTask = create<TaskInterface>()(
             throw err;
           }
         },
-
+ 
         setEdittask: async (id, updatedTask) => {
           set({ loading: true, error: null });
           try {
@@ -113,7 +118,7 @@ export const useTask = create<TaskInterface>()(
             set({ error: err?.response?.data?.error ?? "Failed to update task", loading: false });
           }
         },
-
+ 
         setDeletetask: async (id) => {
           const prevTasks = get().tasks;
           set((state) => ({ tasks: state.tasks.filter((task) => task.id !== id) }));
@@ -123,7 +128,7 @@ export const useTask = create<TaskInterface>()(
             set({ tasks: prevTasks, error: err?.response?.data?.error ?? "Failed to delete task" });
           }
         },
-
+ 
         updateTaskStatus: async (id, status) => {
           const prevTasks = get().tasks;
           set((state) => ({
@@ -135,10 +140,11 @@ export const useTask = create<TaskInterface>()(
             set({ tasks: prevTasks, error: err?.response?.data?.error ?? "Failed to update status" });
           }
         },
-
+ 
         setpriorityFilter: (taskPriority) => set(() => ({ priorityFilter: taskPriority })),
         setstatusFilter: (taskstatus) => set(() => ({ statusFilter: taskstatus })),
         setsearchTerm: (terms) => set(() => ({ searchTerm: terms })),
+        setViewMode: (mode) => set(() => ({ viewMode: mode })),
       }),
       {
         name: "All Tasks",
@@ -146,6 +152,7 @@ export const useTask = create<TaskInterface>()(
           searchTerm: state.searchTerm,
           statusFilter: state.statusFilter,
           priorityFilter: state.priorityFilter,
+          viewMode: state.viewMode,
         }),
       }
     )
